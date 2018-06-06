@@ -1,4 +1,4 @@
-## Configure Shibboleth Identity Provider for use with Azure AD Single Sign-on
+# Configure Shibboleth Identity Provider for use with Azure AD Single Sign-on
 This section contains guidelines on how to configure Shibboleth Identity Provider (IdP) software to be used with Azure AD to enable single sign-on access to one or more Microsoft cloud services (such as Office 365 or Microsoft Azure) using the SAML 2.0 protocol. The SAML 2.0 relying party for a Microsoft cloud service used in this scenario is Azure AD. 
 
 This document describes what files are to be edited to appropriately configure the Shibboleth IdP. The paths used reflect our test installation and should potentially be changed to reflect your configuration.
@@ -75,7 +75,7 @@ To configure Azure AD relying party override, proceed with the following steps:
 Make sure that:
 +The relying party id value matches the *entityID* value of the *EntityDescriptor* element of the Azure AD metadata, for example as of today *"urn:federation:MicrosoftOnline"*;
 
-### Configuring the Shibboleth IdP attribute resolver
+### Configure the Shibboleth IdP attribute resolver
 Azure AD requires two pieces of data from Shibboleth IdP to locate the shadow account in the authentication platform.
 1.	**Azure AD ImmutableID**. Azure AD requires that you select a unique identifier for each user in your user directory. You must also configure Shibboleth IdP to send this attribute on each federated login to Azure AD in the SAML 2.0 *NameID* assertion. This identifier must not change for this user over the lifetime of the user being in your system. Azure AD Service calls this attribute the *ImmutableID*. The value for the unique identifier must not contain domain information and is case-sensitive. For example, do not use user@shibb.contoso.edu.
 
@@ -134,7 +134,6 @@ To inform Shibboleth of these requirements and configure the above claims type, 
 
 6.	Save and close the **attribute-resolver.xml** file.
 
-
 ### Configure the Shibboleth attribute filter
 Shibboleth IdP must be configured to release the two previous required attributes to Azure AD.
 The %IDP_HOME%\conf\attribute-filter.xml file is used to determine which attributes to release to specific service providers.
@@ -169,3 +168,63 @@ To release the attributes to Azure AD, proceed with the following steps:
 
 The settings showed above release the UserId and ImmutableID required attributes only to Azure AD. The settings use specific AttributeFilterPolicy IDs to indicate the attributes are required by Azure AD.
 5.	Save and close the **attribute-filter.xml** file.
+
+### Configure the Shibboleth persistent id generator
+Azure AD uses the persistent nameid and Shibboleth IdP needs to be configured to release the immutableID IdP attribute.
+The %IDP_HOME%\conf\saml-nameid.xml file is used to configure custom name id formats.
+The file contains a set of name Id formatters. By default only the transientId generator is configured. Mappings need to be added to configure a custom persistent id generator.
+
+>[!NOTE]
+>For information, see the online help topic [NAMEIDGENERATIONCONFIGURATION](https://wiki.shibboleth.net/confluence/display/IDP30/NameIDGenerationConfiguration) on the Shibboleth Community wiki site.
+
+To release the attributes to Azure AD, proceed with the following steps:
+1. Use Windows Explorer to navigate to %IDP_Home%\conf, e.g. C:\Program Files (x86)\Shibboleth\IdP\conf.
+2. Right-click the **saml-namid.xml** file, and then click **Edit**. The file should open in Notepad.
+3. Press Ctrl+F to find “shibboleth.SAML2PersistentGenerator”.
+4. Move one line down and insert the following text to modify the list of generators that will be released:
+
+```
+        <!--
+        <ref bean="shibboleth.SAML2PersistentGenerator" />
+        -->
+
+        <!-- Persistent ID Generator for all entities except Azure AD -->
+        <!-- Additional configuration is required if this generator is being used
+        <bean parent="shibboleth.SAML2PersistentGenerator">
+            <property name="activationCondition">
+                <bean parent="shibboleth.Conditions.NOT">
+                    <constructor-arg>
+                        <bean parent="shibboleth.Conditions.RelyingPartyId" c:candidates="urn:federation:MicrosoftOnline" />
+                    </constructor-arg>
+                </bean>
+            </property>
+        </bean>
+ 
+        <!-- Custom persistent ID Generator for Azure AD -->
+        <bean parent="shibboleth.SAML2AttributeSourcedGenerator"
+              p:format="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"
+              p:attributeSourceIds="#{ {'ImmutableID'} }">
+            <property name="activationCondition">
+                <bean parent="shibboleth.Conditions.RelyingPartyId" c:candidates="urn:federation:MicrosoftOnline" />
+            </property>
+        </bean>
+```
+
+The settings showed above release the *UserId* and *ImmutableID* required attributes only to Azure AD. The settings use specific AttributeFilterPolicy IDs to indicate the attributes are required by Azure AD.
+5. Save and close the **saml-nameid.xml** file.
+
+### Restart Shibboleth IdP and verify functionality
+To restart Shibboleth IdP and verify functionality, proceed with the following steps:
+1. Follow the steps as per section § RESTARTING THE SHIBBOLETH WEB SERVER TO TAKE INTO ACCOUNT THE UPDATED CONFIGURATION.
+2. Follow the steps as per section § ENSURING THAT THE SHIBBOLETH IDP IS RUNNING.
+3. Follow the steps as per section § PERFORMING CONFIGURATION TESTS.
+
+These steps stop and start Apache Tomcat to restart Shibboleth IdP and ensure the updated XML files are loaded. Shibboleth may fail to start if there is a problem with one or more of the configuration files.
+
+If you encounter any issue, check Jetty and Shibboleth’s log files after restart, located at:
++ %JETTY_HOME%\logs\
++ DATE.stderrout.log
++ %IDP_HOME%\logs\
++ idp-process.log
+
+If you are still stumped, please check out [SHIBBOLETH TROUBLESHOOTING](https://wiki.shibboleth.net/confluence/display/IDP30/Troubleshooting) on the Shibboleth Community wiki.
