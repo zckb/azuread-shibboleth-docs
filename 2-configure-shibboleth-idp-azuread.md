@@ -20,9 +20,10 @@ The following two metadata provider definitions enable to add the above metadata
 
 It is recommended that you always import the latest Azure AD metadata when configuring your SAML 2.0 identity provider.
 
->[!NOTE]
+>[!NOTE] 
 >Each type of metadata provider has its own set of configuration options. For information on the metadata provider, see the online help topic [METADATACONFIGURATION](https://wiki.shibboleth.net/confluence/display/IDP30/MetadataConfiguration) on the Shibboleth Community wiki site.
 > 
+>[!NOTE] 
 >Azure AD does not read metadata from the identity provider.
 
 1.	You also have to specify the Shibboleth IdP where to find the Azure AD metadata document. As previously discussed, you can do this by adding another entry to the metadata-provider.xml file. Still in Notepad with the metadata-provider.xml file opened, Press Ctrl+F to find “</MetadataProvider>”.
